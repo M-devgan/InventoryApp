@@ -31,7 +31,7 @@ def lambda_handler(event, context):
         table.put_item(
             Item={
                 'item_id': unique_id,
-                'location_id': str(data['location_id']),
+                'location_id': int(data['location_id']),
                 'item_name': data['item_name'],
                 'item_description': data['item_description'],
                 'item_qty_on_hand': int(data['item_qty_on_hand']),
