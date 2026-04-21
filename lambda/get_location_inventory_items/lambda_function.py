@@ -30,7 +30,7 @@ def lambda_handler(event, context):
         }
 
     try:
-        location_id = event['pathParameters']['id']
+        location_id = int(event["pathParameters"]["id"])
 
         response = table.query(
             IndexName=index_name,
