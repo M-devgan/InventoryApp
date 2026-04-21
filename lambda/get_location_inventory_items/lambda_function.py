@@ -15,30 +15,36 @@ def decimal_default(obj):
 
 def lambda_handler(event, context):
     # Initialize DynamoDB resource
-    dynamodb = boto3.resource("dynamodb")
+    dynamodb = boto3.resource('dynamodb')
 
     # Get table name and index name from environment variables
-    table_name = os.getenv("TABLE_NAME", "Inventory")
-    index_name = os.getenv("LOCATION_INDEX_NAME", "location_id-item_id-index")
+    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    index_name = os.getenv('LOCATION_INDEX_NAME', 'location_id-item_id-index')
     table = dynamodb.Table(table_name)
 
     # Extract location id from path parameters
-    if "pathParameters" not in event or "id" not in event["pathParameters"]:
-        return {"statusCode": 400, "body": json.dumps("Missing 'id' path parameter")}
+    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
+        return {
+            'statusCode': 400,
+            'body': json.dumps("Missing 'id' path parameter")
+        }
 
     try:
-        location_id = event["pathParameters"]["id"]
+        location_id = event['pathParameters']['id']
 
         response = table.query(
             IndexName=index_name,
-            KeyConditionExpression=Key("location_id").eq(location_id),
+            KeyConditionExpression=Key('location_id').eq(location_id)
         )
 
-        items = response.get("Items", [])
+        items = response.get('Items', [])
 
-        return {"statusCode": 200, "body": json.dumps(items, default=decimal_default)}
+        return {
+            'statusCode': 200,
+            'body': json.dumps(items, default=decimal_default)
+        }
     except Exception as e:
         return {
-            "statusCode": 500,
-            "body": json.dumps(f"Error getting location inventory items: {str(e)}"),
+            'statusCode': 500,
+            'body': json.dumps(f"Error getting location inventory items: {str(e)}")
         }
