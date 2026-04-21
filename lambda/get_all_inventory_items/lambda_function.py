@@ -1,28 +1,35 @@
-# pylint: disable=missing-module-docstring, missing-function-docstring, broad-except, import-error, unused-argument
-# mypy: ignore-errors
-
+import boto3
 import json
 import os
 from decimal import Decimal
-from typing import Any, Dict
 
-import boto3  # type: ignore
-
-
-def decimal_default(obj: Any) -> Any:
+def decimal_default(obj):
     if isinstance(obj, Decimal):
-        return int(obj) if obj % 1 == 0 else float(obj)
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
     raise TypeError
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    table = boto3.resource("dynamodb").Table(os.getenv("TABLE_NAME", "Inventory"))
+def lambda_handler(event, context):
+    # Initialize DynamoDB resource
+    dynamodb = boto3.resource('dynamodb')
 
+    # Get table name from environment variable
+    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    table = dynamodb.Table(table_name)
+
+    # Get all items from table
     try:
-        items = table.scan().get("Items", [])
+        response = table.scan()
+        items = response.get('Items', [])
+
         return {
-            "statusCode": 200,
-            "body": json.dumps(items, default=decimal_default),
+            'statusCode': 200,
+            'body': json.dumps(items, default=decimal_default)
         }
-    except Exception as error:
-        return {"statusCode": 500, "body": json.dumps(str(error))}
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Error getting inventory items: {str(e)}")
+        }

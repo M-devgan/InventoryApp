@@ -1,41 +1,50 @@
-# pylint: disable=missing-module-docstring, missing-function-docstring, broad-except, import-error, unused-argument
-# mypy: ignore-errors
-
+import boto3
 import json
 import os
 from decimal import Decimal
-from typing import Any, Dict
-
-import boto3  # type: ignore
-from boto3.dynamodb.conditions import Key  # type: ignore
+from boto3.dynamodb.conditions import Key
 
 
-def decimal_default(obj: Any) -> Any:
+def decimal_default(obj):
     if isinstance(obj, Decimal):
-        return int(obj) if obj % 1 == 0 else float(obj)
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
     raise TypeError
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    table = boto3.resource("dynamodb").Table(os.getenv("TABLE_NAME", "Inventory"))
+def lambda_handler(event, context):
+    # Initialize DynamoDB resource
+    dynamodb = boto3.resource('dynamodb')
 
-    index = os.getenv("LOCATION_INDEX_NAME", "location_id-item_id-index")
+    # Get table name and index name from environment variables
+    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    index_name = os.getenv('LOCATION_INDEX_NAME', 'location_id-item_id-index')
+    table = dynamodb.Table(table_name)
 
-    if "pathParameters" not in event or "id" not in event["pathParameters"]:
-        return {"statusCode": 400, "body": json.dumps("Missing id")}
-
-    try:
-        location_id = int(event["pathParameters"]["id"])
-
-        items = table.query(
-            IndexName=index,
-            KeyConditionExpression=Key("location_id").eq(location_id),
-        ).get("Items", [])
-
+    # Extract location id from path parameters
+    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
         return {
-            "statusCode": 200,
-            "body": json.dumps(items, default=decimal_default),
+            'statusCode': 400,
+            'body': json.dumps("Missing 'id' path parameter")
         }
 
-    except Exception as error:
-        return {"statusCode": 500, "body": json.dumps(str(error))}
+    try:
+        location_id = event['pathParameters']['id']
+
+        response = table.query(
+            IndexName=index_name,
+            KeyConditionExpression=Key('location_id').eq(location_id)
+        )
+
+        items = response.get('Items', [])
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps(items, default=decimal_default)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Error getting location inventory items: {str(e)}")
+        }

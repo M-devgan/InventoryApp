@@ -1,44 +1,55 @@
-# pylint: disable=missing-module-docstring, missing-function-docstring, broad-except, import-error, unused-argument
-# mypy: ignore-errors
-
+import boto3
 import json
 import os
-from typing import Any, Dict
-
-import boto3  # type: ignore
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    table = boto3.resource("dynamodb").Table(os.getenv("TABLE_NAME", "Inventory"))
+def lambda_handler(event, context):
+    # Initialize DynamoDB resource
+    dynamodb = boto3.resource('dynamodb')
 
-    if "pathParameters" not in event or "id" not in event["pathParameters"]:
-        return {"statusCode": 400, "body": json.dumps("Missing id")}
+    # Get table name from environment variable
+    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    table = dynamodb.Table(table_name)
 
-    item_id = event["pathParameters"]["id"]
+    # Extract item_id from path parameters
+    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
+        return {
+            'statusCode': 400,
+            'body': json.dumps("Missing 'id' path parameter")
+        }
+
+    item_id = event['pathParameters']['id']
 
     try:
+        # Find the item first because delete needs both item_id and location_id
         response = table.scan()
-        items = response.get("Items", [])
+        items = response.get('Items', [])
 
-        matched = next(
-            (item for item in items if item.get("item_id") == item_id),
-            None,
-        )
+        matched_item = None
+        for item in items:
+            if item.get('item_id') == item_id:
+                matched_item = item
+                break
 
-        if not matched:
-            return {"statusCode": 404, "body": json.dumps("Not found")}
+        if not matched_item:
+            return {
+                'statusCode': 404,
+                'body': json.dumps(f"Item with ID {item_id} not found.")
+            }
 
         table.delete_item(
             Key={
-                "item_id": matched["item_id"],
-                "location_id": matched["location_id"],
+                'item_id': matched_item['item_id'],
+                'location_id': matched_item['location_id']
             }
         )
 
         return {
-            "statusCode": 200,
-            "body": json.dumps(f"Deleted {item_id}"),
+            'statusCode': 200,
+            'body': json.dumps(f"Item with ID {item_id} deleted successfully.")
         }
-
-    except Exception as error:
-        return {"statusCode": 500, "body": json.dumps(str(error))}
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Error deleting item: {str(e)}")
+        }

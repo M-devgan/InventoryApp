@@ -1,43 +1,57 @@
-# pylint: disable=missing-module-docstring, missing-function-docstring, broad-except, import-error, unused-argument
-# mypy: ignore-errors
-
+import boto3
 import json
 import os
 from decimal import Decimal
-from typing import Any, Dict
-
-import boto3  # type: ignore
 
 
-def decimal_default(obj: Any) -> Any:
+def decimal_default(obj):
     if isinstance(obj, Decimal):
-        return int(obj) if obj % 1 == 0 else float(obj)
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
     raise TypeError
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    table = boto3.resource("dynamodb").Table(os.getenv("TABLE_NAME", "Inventory"))
+def lambda_handler(event, context):
+    # Initialize DynamoDB resource
+    dynamodb = boto3.resource('dynamodb')
 
-    if "pathParameters" not in event or "id" not in event["pathParameters"]:
-        return {"statusCode": 400, "body": json.dumps("Missing id")}
+    # Get table name from environment variable
+    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    table = dynamodb.Table(table_name)
 
-    item_id = event["pathParameters"]["id"]
-
-    try:
-        items = table.scan().get("Items", [])
-
-        matched = next(
-            (item for item in items if item.get("item_id") == item_id),
-            None,
-        )
-
-        if not matched:
-            return {"statusCode": 404, "body": json.dumps("Not found")}
-
+    # Check for path parameter
+    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
         return {
-            "statusCode": 200,
-            "body": json.dumps(matched, default=decimal_default),
+            'statusCode': 400,
+            'body': json.dumps("Missing 'id' path parameter")
         }
 
-    except Exception as error:
-        return {"statusCode": 500, "body": json.dumps(str(error))}
+    item_id = event['pathParameters']['id']
+
+    # Because table uses item_id + location_id, we first find the item by item_id
+    try:
+        response = table.scan()
+        items = response.get('Items', [])
+
+        matched_item = None
+        for item in items:
+            if item.get('item_id') == item_id:
+                matched_item = item
+                break
+
+        if not matched_item:
+            return {
+                'statusCode': 404,
+                'body': json.dumps("Item not found")
+            }
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps(matched_item, default=decimal_default)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Error getting item: {str(e)}")
+        }
