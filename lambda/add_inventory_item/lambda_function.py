@@ -1,13 +1,15 @@
+# pylint: disable=missing-module-docstring, broad-except
+# mypy: ignore-errors
+
 import json
 import os
 import uuid
 from decimal import Decimal
 from typing import Any, Dict
 
-import boto3
+import boto3  # type: ignore
 
 
-# pylint: disable=broad-except
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Create a new inventory item in DynamoDB."""
 

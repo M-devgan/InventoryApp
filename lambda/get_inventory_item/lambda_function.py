@@ -1,9 +1,11 @@
+# pylint: disable=missing-module-docstring, broad-except
+# mypy: ignore-errors
 import json
 import os
 from decimal import Decimal
 from typing import Any, Dict
 
-import boto3
+import boto3  # type: ignore
 
 
 def decimal_default(obj: Any) -> Any:

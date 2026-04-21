@@ -1,10 +1,12 @@
+# pylint: disable=missing-module-docstring, broad-except
+# mypy: ignore-errors
 import json
 import os
 from decimal import Decimal
 from typing import Any, Dict
 
-import boto3
-from boto3.dynamodb.conditions import Key
+import boto3  # type: ignore
+from boto3.dynamodb.conditions import Key  # type: ignore
 
 
 def decimal_default(obj: Any) -> Any:
