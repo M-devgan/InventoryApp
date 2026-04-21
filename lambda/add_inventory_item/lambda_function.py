@@ -1,4 +1,4 @@
-# pylint: disable=missing-module-docstring, broad-except
+# pylint: disable=missing-module-docstring, missing-function-docstring, broad-except, import-error, unused-argument
 # mypy: ignore-errors
 
 import json
@@ -11,25 +11,15 @@ import boto3  # type: ignore
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Create a new inventory item in DynamoDB."""
-
     if "body" not in event:
-        return {
-            "statusCode": 400,
-            "body": json.dumps("Missing request body"),
-        }
+        return {"statusCode": 400, "body": json.dumps("Missing request body")}
 
     try:
         data = json.loads(event["body"])
     except json.JSONDecodeError:
-        return {
-            "statusCode": 400,
-            "body": json.dumps("Invalid JSON format"),
-        }
+        return {"statusCode": 400, "body": json.dumps("Invalid JSON format")}
 
-    table_name = os.getenv("TABLE_NAME", "Inventory")
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table(table_name)
+    table = boto3.resource("dynamodb").Table(os.getenv("TABLE_NAME", "Inventory"))
 
     unique_id = str(uuid.uuid4())
 
@@ -44,20 +34,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "item_price": Decimal(str(data["item_price"])),
             }
         )
-
         return {
             "statusCode": 200,
-            "body": json.dumps(f"Item with ID {unique_id} added successfully."),
+            "body": json.dumps(f"Item {unique_id} added"),
         }
-
     except KeyError as error:
         return {
             "statusCode": 400,
-            "body": json.dumps(f"Missing required field: {str(error)}"),
+            "body": json.dumps(f"Missing field {error}"),
         }
-
     except Exception as error:
         return {
             "statusCode": 500,
-            "body": json.dumps(f"Error adding item: {str(error)}"),
+            "body": json.dumps(str(error)),
         }
