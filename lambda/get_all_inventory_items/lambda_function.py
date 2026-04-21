@@ -1,35 +1,38 @@
-import boto3
 import json
 import os
 from decimal import Decimal
+from typing import Any, Dict
 
-def decimal_default(obj):
+import boto3
+
+
+def decimal_default(obj: Any) -> Any:
+    """Convert Decimal values to int or float for JSON serialization."""
     if isinstance(obj, Decimal):
-        if obj % 1 == 0:
-            return int(obj)
-        return float(obj)
+        return int(obj) if obj % 1 == 0 else float(obj)
     raise TypeError
 
 
-def lambda_handler(event, context):
-    # Initialize DynamoDB resource
-    dynamodb = boto3.resource('dynamodb')
+# pylint: disable=broad-except
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Retrieve all inventory items from DynamoDB."""
 
-    # Get table name from environment variable
-    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    dynamodb = boto3.resource("dynamodb")
+
+    table_name = os.getenv("TABLE_NAME", "Inventory")
     table = dynamodb.Table(table_name)
 
-    # Get all items from table
     try:
         response = table.scan()
-        items = response.get('Items', [])
+        items = response.get("Items", [])
 
         return {
-            'statusCode': 200,
-            'body': json.dumps(items, default=decimal_default)
+            "statusCode": 200,
+            "body": json.dumps(items, default=decimal_default),
         }
-    except Exception as e:
+
+    except Exception as error:
         return {
-            'statusCode': 500,
-            'body': json.dumps(f"Error getting inventory items: {str(e)}")
+            "statusCode": 500,
+            "body": json.dumps(f"Error getting inventory items: {str(error)}"),
         }

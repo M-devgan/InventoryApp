@@ -1,57 +1,57 @@
-import boto3
 import json
 import os
 from decimal import Decimal
+from typing import Any, Dict
+
+import boto3
 
 
-def decimal_default(obj):
+def decimal_default(obj: Any) -> Any:
+    """Convert Decimal values to int or float for JSON serialization."""
     if isinstance(obj, Decimal):
-        if obj % 1 == 0:
-            return int(obj)
-        return float(obj)
+        return int(obj) if obj % 1 == 0 else float(obj)
     raise TypeError
 
 
-def lambda_handler(event, context):
-    # Initialize DynamoDB resource
-    dynamodb = boto3.resource('dynamodb')
+# pylint: disable=broad-except
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Retrieve a single inventory item by ID."""
 
-    # Get table name from environment variable
-    table_name = os.getenv('TABLE_NAME', 'Inventory')
+    dynamodb = boto3.resource("dynamodb")
+
+    table_name = os.getenv("TABLE_NAME", "Inventory")
     table = dynamodb.Table(table_name)
 
-    # Check for path parameter
-    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
+    if "pathParameters" not in event or "id" not in event["pathParameters"]:
         return {
-            'statusCode': 400,
-            'body': json.dumps("Missing 'id' path parameter")
+            "statusCode": 400,
+            "body": json.dumps("Missing 'id' path parameter"),
         }
 
-    item_id = event['pathParameters']['id']
+    item_id = event["pathParameters"]["id"]
 
-    # Because table uses item_id + location_id, we first find the item by item_id
     try:
         response = table.scan()
-        items = response.get('Items', [])
+        items = response.get("Items", [])
 
-        matched_item = None
-        for item in items:
-            if item.get('item_id') == item_id:
-                matched_item = item
-                break
+        matched_item = next(
+            (item for item in items if item.get("item_id") == item_id),
+            None,
+        )
 
         if not matched_item:
             return {
-                'statusCode': 404,
-                'body': json.dumps("Item not found")
+                "statusCode": 404,
+                "body": json.dumps("Item not found"),
             }
 
         return {
-            'statusCode': 200,
-            'body': json.dumps(matched_item, default=decimal_default)
+            "statusCode": 200,
+            "body": json.dumps(matched_item, default=decimal_default),
         }
-    except Exception as e:
+
+    except Exception as error:
         return {
-            'statusCode': 500,
-            'body': json.dumps(f"Error getting item: {str(e)}")
+            "statusCode": 500,
+            "body": json.dumps(f"Error getting item: {str(error)}"),
         }
