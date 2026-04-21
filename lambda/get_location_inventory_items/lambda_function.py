@@ -19,7 +19,7 @@ def lambda_handler(event, context):
 
     # Get table name and index name from environment variables
     table_name = os.getenv('TABLE_NAME', 'Inventory')
-    index_name = os.getenv('LOCATION_INDEX_NAME', 'location_id-item_id-index')
+    index_name = os.getenv("LOCATION_INDEX_NAME", "location_index")  
     table = dynamodb.Table(table_name)
 
     # Extract location id from path parameters
